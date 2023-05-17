@@ -1,4 +1,5 @@
 #include "raylib.h"
+// Duc tran 101432125
 
 // InitWindow(800, 600, "Raylib Function Examples") : Initializes a window with the specified width, height, and title.This function is necessary for creating the game window.
 
