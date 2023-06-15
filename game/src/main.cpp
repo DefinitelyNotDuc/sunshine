@@ -1,5 +1,9 @@
-#include <raylib.h>
+#include "raylib.h"
+#include "raymath.h"
 #include <vector>
+
+#define SCREEN_WIDTH 1280
+#define SCREEN_HEIGHT 720
 
 class Rigidbody {
 public:
@@ -7,82 +11,94 @@ public:
     Vector2 velocity;
 };
 
+class Sprite {
+public:
+    Texture2D texture;
+    Vector2 position;
+
+    void Draw() {
+        DrawTextureEx(texture, position, 0.0f, 1.0f, WHITE);
+    }
+};
+
 class Agent {
 public:
     Rigidbody rigidbody;
-    Texture2D sprite;
+    Sprite sprite;
     float maxSpeed;
     float maxAcceleration;
+
+    Vector2 Seek(const Vector2& targetPos, const float maxAccel) {
+        Vector2 desiredVelocity = Vector2Subtract(targetPos, rigidbody.position);
+        float distance = Vector2Length(desiredVelocity);
+
+        if (distance > 0) {
+            desiredVelocity = Vector2Scale(desiredVelocity, maxSpeed / distance);
+
+            Vector2 steering = Vector2Subtract(desiredVelocity, rigidbody.velocity);
+            steering = Vector2Scale(steering, maxAccel / maxSpeed);
+
+            return steering;
+        }
+
+        return { 0, 0 };
+    }
 };
 
-void UpdateRigidbody(Rigidbody& rigidbody, float deltaTime) {
-    rigidbody.position += rigidbody.velocity * deltaTime;
-}
+Vector2 WraparoundScreen(const Vector2& position) {
+    Vector2 outPosition = {
+        fmodf(position.x + SCREEN_WIDTH, SCREEN_WIDTH),
+        fmodf(position.y + SCREEN_HEIGHT, SCREEN_HEIGHT)
+    };
 
-Vector2 Seek(Vector2 agentPosition, Vector2 agentVelocity, Vector2 targetPosition, float maxAcceleration) {
-    Vector2 desiredVelocity = Vector2Normalize(targetPosition - agentPosition) * Vector2Length(agentVelocity);
-    Vector2 steering = desiredVelocity - agentVelocity;
-    return Vector2Clamp(steering, -maxAcceleration, maxAcceleration);
-}
-
-Vector2 Flee(Vector2 agentPosition, Vector2 agentVelocity, Vector2 targetPosition, float maxAcceleration) {
-    Vector2 desiredVelocity = Vector2Normalize(agentPosition - targetPosition) * Vector2Length(agentVelocity);
-    Vector2 steering = desiredVelocity - agentVelocity;
-    return Vector2Clamp(steering, -maxAcceleration, maxAcceleration);
+    return outPosition;
 }
 
 int main() {
-    const int screenWidth = 800;
-    const int screenHeight = 450;
-
-    InitWindow(screenWidth, screenHeight, "Kinematics Simulation");
+    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Sunshine");
     SetTargetFPS(60);
 
     std::vector<Agent> agents;
-    Agent agent1;
-    agent1.rigidbody.position = { 100, 200 };
-    agent1.rigidbody.velocity = { 100, 0 };
-    agent1.maxSpeed = 200.0f;
-    agent1.maxAcceleration = 100.0f;
-    agent1.sprite = LoadTexture("agent1.png");
-    agents.push_back(agent1);
+    Agent agent;
+    agent.rigidbody.position = { 400, 225 };
+    agent.rigidbody.velocity = { 10, 0 };
+    agent.maxSpeed = 400.0f;
+    agent.maxAcceleration = 800.0f;
+    agent.sprite.texture = LoadTexture("Screenshot 2023-06-02 134114.png");
+    agents.push_back(agent);
 
-    Agent agent2;
-    agent2.rigidbody.position = { 500, 200 };
-    agent2.rigidbody.velocity = { -100, 0 };
-    agent2.maxSpeed = 150.0f;
-    agent2.maxAcceleration = 80.0f;
-    agent2.sprite = LoadTexture("agent2.png");
-    agents.push_back(agent2);
+    Rigidbody circleA = { SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 };
 
     while (!WindowShouldClose()) {
-        // Update
-        float deltaTime = GetFrameTime();
+        const float deltaTime = GetFrameTime();
 
-        for (auto& agent : agents) {
-            Vector2 targetPosition = GetMousePosition();
-
-            if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
-                Vector2 acceleration = Seek(agent.rigidbody.position, agent.rigidbody.velocity, targetPosition, agent.maxAcceleration);
-                agent.rigidbody.velocity += acceleration * deltaTime;
-            }
-
-            UpdateRigidbody(agent.rigidbody, deltaTime);
-        }
-
-        // Draw
         BeginDrawing();
         ClearBackground(RAYWHITE);
 
-        for (const auto& agent : agents) {
-            DrawTexture(agent.sprite, agent.rigidbody.position.x, agent.rigidbody.position.y, WHITE);
+        for (size_t i = 0; i < agents.size(); i++) {
+            Agent& agent = agents[i];
+
+            agent.rigidbody.position = WraparoundScreen(agent.rigidbody.position);
+
+            // Seek towards the mouse position while the mouse button is held down
+            if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
+                Vector2 acceleration = agent.Seek(GetMousePosition(), agent.maxAcceleration);
+                agent.rigidbody.velocity = Vector2Add(agent.rigidbody.velocity, acceleration);
+            }
+
+            agent.rigidbody.position = Vector2Add(agent.rigidbody.position, Vector2Scale(agent.rigidbody.velocity, deltaTime));
+            agent.sprite.position = agent.rigidbody.position;
+            agent.sprite.Draw();
         }
+
+        DrawCircleV(circleA.position, 50, RED);
 
         EndDrawing();
     }
 
-    for (const auto& agent : agents) {
-        UnloadTexture(agent.sprite);
+    // Unload resources
+    for (size_t i = 0; i < agents.size(); i++) {
+        UnloadTexture(agents[i].sprite.texture);
     }
 
     CloseWindow();
