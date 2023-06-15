@@ -55,7 +55,7 @@ Vector2 WraparoundScreen(const Vector2& position) {
 }
 
 int main() {
-    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Sunshine");
+    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Yuzzi");
     SetTargetFPS(60);
 
     std::vector<Agent> agents;
@@ -64,7 +64,7 @@ int main() {
     agent.rigidbody.velocity = { 10, 0 };
     agent.maxSpeed = 400.0f;
     agent.maxAcceleration = 800.0f;
-    agent.sprite.texture = LoadTexture("Screenshot 2023-06-02 134114.png");
+    agent.sprite.texture = LoadTexture("....game\assets\textures\Screenshot 2023 - 06 - 02 134114.png");
     agents.push_back(agent);
 
     Rigidbody circleA = { SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 };
